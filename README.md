@@ -8,7 +8,9 @@ To follow along in this demo using the Cloud Playground Sandbox, follow these st
 1. Log in to the Azure Sandbox using the provided credentials.
 1. Click the **Deploy to Azure** button. Make sure the link opens in the Sandbox browser tab.
 
-[![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/#TODO)
+    [![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fgithub.com%2FWayneHoggett-ACG%2Faks-networking-draft%2Fblob%2Fmain%2F1.2%2Fmain.json)
 
 1. Deploy the template.
-1. Follow-along with the Demo.
+1. Follow-along with the demo.
+
+## 
