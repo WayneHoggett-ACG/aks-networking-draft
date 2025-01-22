@@ -1,6 +1,10 @@
+
+@description('The tenant ID for the Service Principal (Application), use the default value for the Sandbox')
 param tenantId string = '84f1e4ea-8554-43e1-8709-f0b8589ea118'
+@description('The Client ID for the Service Principal (Application). Retrieve this value from the details of your Sandbox instance.')
 param applicationClientId string
 @secure()
+@description('The Client Secret for the Service Principal (Application). Retrieve this value from the details of your Sandbox instance.')
 param applicationClientSecret string
 
 var location  = resourceGroup().location
