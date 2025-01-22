@@ -95,11 +95,10 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
     az acr build --registry $ACR --image web:v1 .
     # Connect to the AKS cluster
     az aks get-credentials --resource-group $RG --name $AKS
-    alias k=kubectl
     # Create the Namespace and Application
-    k create namespace globalmanticsbooks --save-config
-    k create deployment web --image=$ACR_LOGIN_SERVER/web:v1 --namespace globalmanticsbooks --replicas=1 --port=80
-    k create deployment api --image=$ACR_LOGIN_SERVER/api:v1 --namespace globalmanticsbooks --replicas=1 --port=5000
+    kubectl create namespace globalmanticsbooks --save-config
+    kubectl create deployment web --image=$ACR_LOGIN_SERVER/web:v1 --namespace globalmanticsbooks --replicas=1 --port=80
+    kubectl create deployment api --image=$ACR_LOGIN_SERVER/api:v1 --namespace globalmanticsbooks --replicas=1 --port=5000
     '''
     supportingScriptUris: []
     timeout: 'PT30M'
