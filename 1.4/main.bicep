@@ -97,6 +97,7 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
     az aks get-credentials --resource-group $RG --name $AKS
     # Create the Namespace and Application
     kubectl create namespace globalmanticsbooks --save-config
+    k config set-context --current --namespace=globalmanticsbooks
     kubectl create deployment web --image=$ACR_LOGIN_SERVER/web:v1 --namespace globalmanticsbooks --replicas=1 --port=80
     kubectl create deployment api --image=$ACR_LOGIN_SERVER/api:v1 --namespace globalmanticsbooks --replicas=1 --port=5000
     kubectl expose deployment/api --port=80 --target-port=5000
