@@ -31,18 +31,24 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2019-11-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: [
-        '10.240.0.0/16'
+        '10.0.0.0/8'
       ]
     }
     subnets: [
       {
-        name: 'snet-clusternodes'
+        name: 'snet-nodes'
         properties: {
-          addressPrefix: '10.240.0.0/22'
+          addressPrefix: '10.240.0.0/16'
         }
       }
       {
-        name: 'snet-cluster-ingress-services'
+        name: 'snet-pods'
+        properties: {
+          addressPrefix: '10.241.0.0/16'
+        }
+      }
+      {
+        name: 'snet-ingress'
         properties: {
           addressPrefix: '10.240.4.0/28'
         }
@@ -51,12 +57,6 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2019-11-01' = {
         name: 'snet-application-gateway'
         properties: {
           addressPrefix: '10.240.5.0/24'
-        }
-      }
-      {
-        name: 'snet-private-link-endpoints'
-        properties: {
-          addressPrefix: '10.240.4.192/26'
         }
       }
     ]
@@ -90,6 +90,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2024-06-02-previ
         type: 'VirtualMachineScaleSets'
         mode: 'System'
         vnetSubnetID: virtualNetwork.properties.subnets[0].id
+        podSubnetID: virtualNetwork.properties.subnets[1].id
       }
     ]
   }
