@@ -25,6 +25,44 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-pr
   }
 }
 
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2019-11-01' = {
+  name: 'vnet-${uniqueSuffix}'
+  location: location
+  properties: {
+    addressSpace: {
+      addressPrefixes: [
+        '10.240.0.0/16'
+      ]
+    }
+    subnets: [
+      {
+        name: 'snet-clusternodes'
+        properties: {
+          addressPrefix: '10.240.0.0/22'
+        }
+      }
+      {
+        name: 'snet-cluster-ingress-services'
+        properties: {
+          addressPrefix: '10.240.4.0/28'
+        }
+      }
+      {
+        name: 'snet-application-gateway'
+        properties: {
+          addressPrefix: '10.240.5.0/24'
+        }
+      }
+      {
+        name: 'snet-private-link-endpoints'
+        properties: {
+          addressPrefix: '10.240.4.192/26'
+        }
+      }
+    ]
+  }
+}
+
 resource aksCluster 'Microsoft.ContainerService/managedClusters@2024-06-02-preview' = {
   location: location
   name: 'aks-${uniqueSuffix}'
@@ -39,6 +77,8 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2024-06-02-previ
     dnsPrefix: 'aks-${uniqueSuffix}'
     networkProfile: {
       networkPlugin: 'azure'
+      serviceCidr: '172.10.0.0/16' // Not used anywhere else on network
+      dnsServiceIP: '172.10.0.10'
     }
     agentPoolProfiles: [
       {
@@ -49,6 +89,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2024-06-02-previ
         osType: osTypeLinux
         type: 'VirtualMachineScaleSets'
         mode: 'System'
+        vnetSubnetID: virtualNetwork.properties.subnets[0].id
       }
     ]
   }

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.32.4.45862",
-      "templateHash": "3093438883429168873"
+      "templateHash": "8108590383209882544"
     }
   },
   "parameters": {
@@ -51,6 +51,45 @@
       }
     },
     {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2019-11-01",
+      "name": "[format('vnet-{0}', variables('uniqueSuffix'))]",
+      "location": "[variables('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.240.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "snet-clusternodes",
+            "properties": {
+              "addressPrefix": "10.240.0.0/22"
+            }
+          },
+          {
+            "name": "snet-cluster-ingress-services",
+            "properties": {
+              "addressPrefix": "10.240.4.0/28"
+            }
+          },
+          {
+            "name": "snet-application-gateway",
+            "properties": {
+              "addressPrefix": "10.240.5.0/24"
+            }
+          },
+          {
+            "name": "snet-private-link-endpoints",
+            "properties": {
+              "addressPrefix": "10.240.4.192/26"
+            }
+          }
+        ]
+      }
+    },
+    {
       "type": "Microsoft.ContainerService/managedClusters",
       "apiVersion": "2024-06-02-preview",
       "name": "[format('aks-{0}', variables('uniqueSuffix'))]",
@@ -65,7 +104,9 @@
         "enableRBAC": true,
         "dnsPrefix": "[format('aks-{0}', variables('uniqueSuffix'))]",
         "networkProfile": {
-          "networkPlugin": "azure"
+          "networkPlugin": "azure",
+          "serviceCidr": "172.10.0.0/16",
+          "dnsServiceIP": "172.10.0.10"
         },
         "agentPoolProfiles": [
           {
@@ -75,10 +116,14 @@
             "vmSize": "[variables('agentVMSize')]",
             "osType": "[variables('osTypeLinux')]",
             "type": "VirtualMachineScaleSets",
-            "mode": "System"
+            "mode": "System",
+            "vnetSubnetID": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-{0}', variables('uniqueSuffix'))), '2019-11-01').subnets[0].id]"
           }
         ]
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', format('vnet-{0}', variables('uniqueSuffix')))]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deploymentScripts",
