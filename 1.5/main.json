@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.32.4.45862",
-      "templateHash": "8108590383209882544"
+      "templateHash": "3111886786710371431"
     }
   },
   "parameters": {
@@ -53,7 +53,7 @@
     {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2019-11-01",
-      "name": "[format('vnet-{0}', variables('uniqueSuffix'))]",
+      "name": "vnet-aks",
       "location": "[variables('location')]",
       "properties": {
         "addressSpace": {
@@ -117,12 +117,12 @@
             "osType": "[variables('osTypeLinux')]",
             "type": "VirtualMachineScaleSets",
             "mode": "System",
-            "vnetSubnetID": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('vnet-{0}', variables('uniqueSuffix'))), '2019-11-01').subnets[0].id]"
+            "vnetSubnetID": "[reference(resourceId('Microsoft.Network/virtualNetworks', 'vnet-aks'), '2019-11-01').subnets[0].id]"
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', format('vnet-{0}', variables('uniqueSuffix')))]"
+        "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-aks')]"
       ]
     },
     {

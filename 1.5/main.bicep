@@ -26,7 +26,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-pr
 }
 
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2019-11-01' = {
-  name: 'vnet-${uniqueSuffix}'
+  name: 'vnet-aks'
   location: location
   properties: {
     addressSpace: {
