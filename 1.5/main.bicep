@@ -1,18 +1,19 @@
 
-@description('The tenant ID for the Service Principal (Application), use the default value for the Sandbox')
-param tenantId string = '84f1e4ea-8554-43e1-8709-f0b8589ea118'
-@description('The Client ID for the Service Principal (Application). Retrieve this value from the details of your Sandbox instance.')
-param applicationClientId string
-@secure()
-@description('The Client Secret for the Service Principal (Application). Retrieve this value from the details of your Sandbox instance.')
-param applicationClientSecret string
-
 var location  = resourceGroup().location
 var osDiskSizeGB  = 128
 var agentCount = 1
 var agentVMSize = 'Standard_D2s_v3'
 var osTypeLinux = 'Linux'
 var uniqueSuffix = uniqueString(resourceGroup().id)
+
+var roleDefinitionId = {
+  AcrPull: {
+    id: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+  }
+  Contributor: {
+    id: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
+  }
+}
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: 'cr${uniqueSuffix}'
@@ -22,44 +23,6 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-pr
   }
   properties: {
     anonymousPullEnabled: true
-  }
-}
-
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2019-11-01' = {
-  name: 'vnet-aks'
-  location: location
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        '10.0.0.0/8'
-      ]
-    }
-    subnets: [
-      {
-        name: 'snet-nodes'
-        properties: {
-          addressPrefix: '10.240.0.0/16'
-        }
-      }
-      {
-        name: 'snet-pods'
-        properties: {
-          addressPrefix: '10.241.0.0/16'
-        }
-      }
-      {
-        name: 'snet-ingress'
-        properties: {
-          addressPrefix: '10.240.4.0/28'
-        }
-      }
-      {
-        name: 'snet-application-gateway'
-        properties: {
-          addressPrefix: '10.240.5.0/24'
-        }
-      }
-    ]
   }
 }
 
@@ -77,8 +40,6 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2024-06-02-previ
     dnsPrefix: 'aks-${uniqueSuffix}'
     networkProfile: {
       networkPlugin: 'azure'
-      serviceCidr: '172.10.0.0/16' // Not used anywhere else on network
-      dnsServiceIP: '172.10.0.10'
     }
     agentPoolProfiles: [
       {
@@ -89,16 +50,51 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2024-06-02-previ
         osType: osTypeLinux
         type: 'VirtualMachineScaleSets'
         mode: 'System'
-        vnetSubnetID: virtualNetwork.properties.subnets[0].id
-        podSubnetID: virtualNetwork.properties.subnets[1].id
       }
     ]
+    ingressProfile: {
+      webAppRouting: {
+        enabled: true
+      }
+    }
+  }
+}
+
+resource AssignAcrPullToAks 'Microsoft.Authorization/roleAssignments@2020-10-01-preview' = {
+  name: guid(resourceGroup().id, containerRegistry.name, aksCluster.name, 'ACRPull')
+  scope: containerRegistry
+  properties: {
+    principalId: aksCluster.properties.identityProfile.kubeletidentity.objectId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: roleDefinitionId['AcrPull'].id
+  }
+}
+
+resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+  name: 'DeploymentScriptIdentity'
+  location: location
+}
+
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(deploymentScriptIdentity.id, resourceGroup().id, 'Contributor')
+  scope: resourceGroup()
+  properties: {
+    description: 'Managed identity role assignment'
+    principalId: deploymentScriptIdentity.properties.principalId
+    roleDefinitionId: roleDefinitionId['Contributor'].id
+    principalType: 'ServicePrincipal'
   }
 }
 
 resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name: 'ds-deploymentscript'
   location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${deploymentScriptIdentity.id}': {}
+    }
+  }
   dependsOn: [
     containerRegistry
     aksCluster
@@ -107,26 +103,11 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   properties: {
     forceUpdateTag: '1'
     azCliVersion:  '2.9.1'
-    environmentVariables: [
-      {
-        name: 'APP_ID'
-        value: applicationClientId
-      }
-      {
-        name: 'CLIENT_SECRET'
-        value: applicationClientSecret
-      }
-      {
-        name: 'TENANT_ID'
-        value: tenantId
-      }
-    ]
     scriptContent: '''
     # Install kubectl
     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
     chmod +x kubectl
     mv kubectl /usr/local/bin/
-    az login --service-principal --username $APP_ID --password $CLIENT_SECRET --tenant $TENANT_ID
     RG=$(az group list --query [].name --output tsv)
     AKS=$(az aks list --resource-group $RG --query [].name --output tsv)
     ACR=$(az acr list --resource-group $RG --query [].name --output tsv)
@@ -148,8 +129,6 @@ resource deploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
     kubectl expose deployment/api --port=80 --target-port=5000
     kubectl set env deployment/web BOOKS_API_URL=http://api
     kubectl expose deployment/web --port=80 --target-port=80
-    # Enable app routing addon
-    az aks approuting enable --resource-group $RG --name $AKS
     # Create an Ingress for the web app
     kubectl create ingress web --rule="/=web:80" --class=webapprouting.kubernetes.azure.com
     # Patch in the pathType to Prefix
