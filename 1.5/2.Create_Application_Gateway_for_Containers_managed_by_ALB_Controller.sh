@@ -22,3 +22,23 @@ az role assignment create --assignee-object-id $principalId --assignee-principal
 
 # Delegate Network Contributor permission for join to association subnet
 az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --scope $ALB_SUBNET_ID --role "4d97b98b-1d4f-4787-a291-c67834d212e7"
+
+# Define the Kubernetes namespace for the ApplicationLoadBalancer resource
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: alb-infrastructure
+EOF
+
+# create the Application Gateway for Containers resource and association
+kubectl apply -f - <<EOF
+apiVersion: alb.networking.azure.io/v1
+kind: ApplicationLoadBalancer
+metadata:
+  name: alb
+  namespace: alb-infrastructure
+spec:
+  associations:
+  - $ALB_SUBNET_ID
+EOF
