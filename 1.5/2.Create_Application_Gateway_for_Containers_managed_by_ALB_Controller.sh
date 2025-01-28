@@ -35,7 +35,7 @@ metadata:
   name: alb-infrastructure
 EOF
 
-# create the Application Gateway for Containers resource and association
+# Create the Application Gateway for Containers resource and association
 echo "Creating ApplicationLoadBalancer resource"
 kubectl apply -f - <<EOF
 apiVersion: alb.networking.azure.io/v1
